@@ -44,6 +44,8 @@ case "$(uname)" in
 esac
 
 # Test for bad ld.
+# here is some check the version of the ld
+# ubuntu ld is not work as expected :)
 if ld --version 2>&1 | grep 'gold.* 2\.20' >/dev/null; then
 	echo 'ERROR: Your system has gold 2.20 installed.'
 	echo 'This version is shipped by Ubuntu even though'
@@ -58,6 +60,9 @@ fi
 # Test for bad SELinux.
 # On Fedora 16 the selinux filesystem is mounted at /sys/fs/selinux,
 # so loop through the possible selinux mount points.
+
+# I guess the goal is to ensure that stack is allowed to execute code
+# so you need to check the selinux options
 for se_mount in /selinux /sys/fs/selinux
 do
 	if [ -d $se_mount -a -f $se_mount/booleans/allow_execstack -a -x /usr/sbin/selinuxenabled ] && /usr/sbin/selinuxenabled; then
@@ -85,14 +90,24 @@ rm -f ./pkg/runtime/runtime_defs.go
 echo '# Building C bootstrap tool.'
 echo cmd/dist
 export GOROOT="$(cd .. && pwd)"
+
+# here the GOROOT_FINAL will remain original value if not null
+# else it will be set to GOROOT
 GOROOT_FINAL="${GOROOT_FINAL:-$GOROOT}"
+# the string is -DGOROOT_FINAL='/path'
 DEFGOROOT='-DGOROOT_FINAL="'"$GOROOT_FINAL"'"'
 
+# the flag is to hint the bit width
 mflag=""
 case "$GOHOSTARCH" in
 386) mflag=-m32;;
 amd64) mflag=-m64;;
 esac
+
+# binary cmd/dist/dist
+# include cmd/dist
+# src cmd/dist/*.c
+# env DEFGOROOT
 gcc $mflag -O2 -Wall -Werror -ggdb -o cmd/dist/dist -Icmd/dist "$DEFGOROOT" cmd/dist/*.c
 
 eval $(./cmd/dist/dist env -p)

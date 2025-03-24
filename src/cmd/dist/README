@@ -43,3 +43,11 @@ The binit/vinit calls prepare a buffer or vector for use, initializing the
 data structures, and the bfree/vfree calls free any memory they are still
 holding onto.  Use of this idiom gives us lexically scoped allocations.
 
+------------------
+My Comment
+------------------
+
+so you are really hate the cxx?
+
+
+

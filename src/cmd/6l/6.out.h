@@ -737,7 +737,7 @@ enum	as
 	ACRC32Q,
 	AIMUL3Q,
 
-	ALAST
+	ALAST,
 };
 
 enum

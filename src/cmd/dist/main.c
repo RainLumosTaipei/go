@@ -8,9 +8,10 @@ int vflag;
 char *argv0;
 
 // cmdtab records the available commands.
+// alias command table
 static struct {
-	char *name;
-	void (*f)(int, char**);
+	char *name; // func name
+	void (*f)(int, char**); // func pointer
 } cmdtab[] = {
 	{"banner", cmdbanner},
 	{"bootstrap", cmdbootstrap},

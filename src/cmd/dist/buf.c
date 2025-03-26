@@ -27,11 +27,13 @@ void
 bfree(Buf *b)
 {
 	xfree(b->p);
+	// after free, the pointer should be nil
 	binit(b);
 }
 
 // bgrow ensures that the buffer has at least n more bytes
 // between its len and cap.
+// not to modify the len
 void
 bgrow(Buf *b, int n)
 {
@@ -40,18 +42,22 @@ bgrow(Buf *b, int n)
 	want = b->len+n;
 	if(want > b->cap) {
 		b->cap = 2*want;
+		// as for the small array,
+		// we can set the min size is 64
 		if(b->cap < 64)
 			b->cap = 64;
+		// use realloc to resize
 		b->p = xrealloc(b->p, b->cap);
 	}
 }
 
 // bwrite appends the n bytes at v to the buffer.
+// append n chars at end
 void
 bwrite(Buf *b, void *v, int n)
 {
 	bgrow(b, n);
-	xmemmove(b->p+b->len, v, n);
+	xmemmove(b->p + b->len, v, n);
 	b->len += n;
 }
 
@@ -64,6 +70,7 @@ bwritestr(Buf *b, char *p)
 
 // bstr returns a pointer to a NUL-terminated string of the
 // buffer contents.  The pointer points into the buffer.
+// note the raw data is modified
 char*
 bstr(Buf *b)
 {
@@ -75,6 +82,7 @@ bstr(Buf *b)
 // btake takes ownership of the string form of the buffer.
 // After this call, the buffer has zero length and does not
 // refer to the memory that btake returned.
+// but the space is not freed
 char*
 btake(Buf *b)
 {
@@ -100,6 +108,7 @@ bequal(Buf *s, Buf *t)
 }
 
 // bsubst rewites b to replace all occurrences of x with y.
+// replace all x in b with y
 void
 bsubst(Buf *b, char *x, char *y)
 {
@@ -111,17 +120,24 @@ bsubst(Buf *b, char *x, char *y)
 
 	pos = 0;
 	for(;;) {
+	    // find the first the index
 		p = xstrstr(bstr(b)+pos, x);
 		if(p == nil)
 			break;
+		// check the len
 		if(nx != ny) {
 			if(nx < ny) {
+                // bgrow will change the pointer,
+                // so we need to save the pos
 				pos = p - b->p;
 				bgrow(b, ny-nx);
 				p = b->p + pos;
 			}
-			xmemmove(p+ny, p+nx, (b->p+b->len)-(p+nx));
+			// move the char behind the x
+			// note that len is the old value
+			xmemmove(p+ny, p+nx, (b->p + b->len)-(p+nx));
 		}
+		// move y
 		xmemmove(p, y, ny);
 		pos = p+ny - b->p;
 		b->len += ny - nx;
@@ -142,6 +158,7 @@ vinit(Vec *v)
 }
 
 // vreset truncates the vector back to zero length.
+// not to modify the cap
 void
 vreset(Vec *v)
 {
@@ -222,6 +239,7 @@ strpcmp(const void *a, const void *b)
 
 // vuniq sorts the vector and then discards duplicates,
 // in the manner of sort | uniq.
+// sort and remove same element
 void
 vuniq(Vec *v)
 {
@@ -229,6 +247,7 @@ vuniq(Vec *v)
 
 	xqsort(v->p, v->len, sizeof(v->p[0]), strpcmp);
 	n = 0;
+	// double pointer method
 	for(i=0; i<v->len; i++) {
 		if(n>0 && streq(v->p[i], v->p[n-1]))
 			xfree(v->p[i]);
@@ -240,6 +259,7 @@ vuniq(Vec *v)
 
 // splitlines replaces the vector v with the result of splitting
 // the input p after each \n.
+// tran para into vec
 void
 splitlines(Vec *v, char *p)
 {
@@ -271,9 +291,11 @@ splitfields(Vec *v, char *p)
 			p++;
 		if(*p == '\0')
 			break;
+		// get the first letter
 		start = p;
 		while(*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\0')
 			p++;
+		// the last letter
 		vaddn(v, start, p-start);
 	}
 }

@@ -10,22 +10,25 @@ typedef long long Time;
 
 #define nil ((void*)0)
 #define nelem(x) (sizeof(x)/sizeof((x)[0]))
+// this macro define does a null pointer trans,
+// just to erase the unused warnings
 #define USED(x) ((void)(x))
 
 // A Buf is a byte buffer, like Go's []byte.
+// Buf definition
 typedef struct Buf Buf;
 struct Buf
 {
-	char *p;
-	int len;
-	int cap;
+	char *p;    // start pointer
+	int len;    // real length
+	int cap;    // malloc size
 };
 
 // A Vec is a string vector, like Go's []string.
 typedef struct Vec Vec;
 struct Vec
 {
-	char **p;
+	char **p;   // note vec is just a pointer to buf
 	int len;
 	int cap;
 };

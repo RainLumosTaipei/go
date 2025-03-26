@@ -110,9 +110,11 @@ esac
 # env DEFGOROOT
 gcc $mflag -O2 -Wall -Werror -ggdb -o cmd/dist/dist -Icmd/dist "$DEFGOROOT" cmd/dist/*.c
 
+# regis env
 eval $(./cmd/dist/dist env -p)
 echo
 
+# not exec
 if [ "$1" = "--dist-tool" ]; then
 	# Stop after building dist tool.
 	mkdir -p "$GOTOOLDIR"
@@ -123,12 +125,17 @@ if [ "$1" = "--dist-tool" ]; then
 	exit 0
 fi
 
+# not exec
 echo "# Building compilers and Go bootstrap tool for host, $GOHOSTOS/$GOHOSTARCH."
 buildall="-a"
 if [ "$1" = "--no-clean" ]; then
 	buildall=""
 fi
+
+# here call bootstrap to start main!!!
+# include compile and link
 ./cmd/dist/dist bootstrap $buildall -v # builds go_bootstrap
+
 # Delay move of dist tool to now, because bootstrap may clear tool directory.
 mv cmd/dist/dist "$GOTOOLDIR"/dist
 "$GOTOOLDIR"/go_bootstrap clean -i std

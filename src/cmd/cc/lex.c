@@ -28,6 +28,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// so is this a history lexer on the inferno OS?
+
 #include	<u.h>
 #include	"cc.h"
 #include	"y.tab.h"

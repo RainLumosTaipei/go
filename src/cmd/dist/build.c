@@ -16,6 +16,7 @@ char *gohostarch;
 char *gohostchar;
 char *gohostos;
 char *goos;
+// note that gcc can use the env var
 char *goroot = GOROOT_FINAL;
 char *goroot_final = GOROOT_FINAL;
 char *workdir;
@@ -76,15 +77,19 @@ init(void)
 
 	binit(&b);
 
+	// set goroot path
 	xgetenv(&b, "GOROOT");
 	if(b.len > 0) {
 		// if not "/", then strip trailing path separator
+		// example: /path/to/go/ -> /path/to/go
 		if(b.len >= 2 && b.p[b.len - 1] == slash[0])
 			b.len--;
 		goroot = btake(&b);
 	}
 
+	// append bin path as GOROOT/bin
 	xgetenv(&b, "GOBIN");
+	// if not set
 	if(b.len == 0)
 		bprintf(&b, "%s%sbin", goroot, slash);
 	gobin = btake(&b);
@@ -130,10 +135,11 @@ init(void)
 	// Make the environment more predictable.
 	xsetenv("LANG", "C");
 	xsetenv("LANGUAGE", "en_US.UTF8");
-
+	// get go version
 	goversion = findgoversion();
-
+	// create tmp work dir
 	workdir = xworkdir();
+	// atexit to remove tmp work dir
 	xatexit(rmworkdir);
 
 	bpathf(&b, "%s/pkg/tool/%s_%s", goroot, gohostos, gohostarch);
@@ -156,7 +162,7 @@ static void
 chomp(Buf *b)
 {
 	int c;
-
+	// remove tail space
 	while(b->len > 0 && ((c=b->p[b->len-1]) == ' ' || c == '\t' || c == '\r' || c == '\n'))
 		b->len--;
 }
@@ -203,6 +209,7 @@ findgoversion(void)
 
 	// Otherwise, use Mercurial.
 	// What is the current branch?
+	// nil hint the var arg end
 	run(&branch, goroot, CheckExit, "hg", "identify", "-b", nil);
 	chomp(&branch);
 
@@ -297,6 +304,7 @@ static char *unreleased[] = {
 };
 
 // setup sets up the tree for the initial build.
+// make dir 
 static void
 setup(void)
 {
@@ -887,6 +895,7 @@ install(char *dir)
 		vadd(&compile, "-o");
 		vadd(&compile, bstr(&b));
 		vadd(&compile, files.p[i]);
+		// here call gcc to compile
 		bgrunv(bstr(&path), CheckExit, &compile);
 
 		vadd(&link, bstr(&b));
@@ -929,7 +938,7 @@ install(char *dir)
 
 	// Remove target before writing it.
 	xremove(link.p[targ]);
-
+	// call linker to link
 	runv(nil, nil, CheckExit, &link);
 
 nobuild:
@@ -1292,6 +1301,7 @@ cmdenv(int argc, char **argv)
 	binit(&b);
 	binit(&b1);
 
+	// print env with value
 	format = "%s=\"%s\"\n";
 	pflag = 0;
 	ARGBEGIN{
@@ -1344,6 +1354,7 @@ cmdbootstrap(int argc, char **argv)
 
 	binit(&b);
 
+	// parse cmd options
 	ARGBEGIN{
 	case 'a':
 		rebuildall = 1;

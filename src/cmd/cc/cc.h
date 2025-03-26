@@ -31,6 +31,7 @@
 #include <libc.h>
 #include <bio.h>
 
+// maybe capable for the old version
 #ifndef	EXTERN
 #define EXTERN	extern
 #endif

@@ -30,12 +30,15 @@ char*
 bprintf(Buf *b, char *fmt, ...)
 {
 	va_list arg;
+	// long enough
 	char buf[4096];
 	
 	breset(b);
 	va_start(arg, fmt);
+	// use vsnprintf to write the fmt str in buf
 	vsnprintf(buf, sizeof buf, fmt, arg);
 	va_end(arg);
+	// copy buf to b
 	bwritestr(b, buf);
 	return bstr(b);
 }
@@ -78,7 +81,7 @@ breadfrom(Buf *b, int fd)
 
 	for(;;) {
 		bgrow(b, 4096);
-		n = read(fd, b->p+b->len, 4096);
+		n = read(fd, b->p + b->len, 4096);
 		if(n < 0)
 			fatal("read: %s", strerror(errno));
 		if(n == 0)
@@ -111,7 +114,7 @@ run(Buf *b, char *dir, int mode, char *cmd, ...)
 	va_list arg;
 	Vec argv;
 	char *p;
-	
+	// save the cmd in a vec
 	vinit(&argv);
 	vadd(&argv, cmd);
 	va_start(arg, cmd);
@@ -147,6 +150,7 @@ static struct {
 	char *cmd;
 	Buf *b;
 } bg[MAXBG];
+// tol bg cmd count
 static int nbg;
 static int maxnbg = nelem(bg);
 
@@ -166,10 +170,11 @@ genrun(Buf *b, char *dir, int mode, Vec *argv, int wait)
 	// Generate a copy of the command to show in a log.
 	// Substitute $WORK for the work directory.
 	binit(&cmd);
-	for(i=0; i<argv->len; i++) {
+	for(i=0; i< argv->len; i++) {
 		if(i > 0)
 			bwritestr(&cmd, " ");
 		q = argv->p[i];
+		// if the cmd has the workdir prefix
 		if(workdir != nil && hasprefix(q, workdir)) {
 			bwritestr(&cmd, "$WORK");
 			q += strlen(workdir);
@@ -179,42 +184,56 @@ genrun(Buf *b, char *dir, int mode, Vec *argv, int wait)
 	if(vflag > 1)
 		xprintf("%s\n", bstr(&cmd));
 
+	// here we create a pipe to read the output of the command
 	if(b != nil) {
 		breset(b);
 		if(pipe(p) < 0)
 			fatal("pipe: %s", strerror(errno));
 	}
 
+	// fork a new process to exec the cmd
 	switch(pid = fork()) {
 	case -1:
 		fatal("fork: %s", strerror(errno));
+	// child process just need to exec the cmd
 	case 0:
 		if(b != nil) {
-			close(0);
-			close(p[0]);
-			dup2(p[1], 1);
-			dup2(p[1], 2);
-			if(p[1] > 2)
+			close(0); // close stdin 
+			close(p[0]); // close the read end of the pipe
+			dup2(p[1], 1); // stdout to write end of the pipe
+			dup2(p[1], 2); // the same for stderr
+			// if the pipe is not on 0, 1, 2,
+			// that mean the pipe is a new file desc
+			// we just use stdout and stderr to wrire to it
+			if(p[1] > 2) 
 				close(p[1]);
 		}
 		if(dir != nil) {
+			// change current dir
 			if(chdir(dir) < 0) {
 				fprintf(stderr, "chdir %s: %s\n", dir, strerror(errno));
 				_exit(1);
 			}
 		}
+		// note the argv last element must be null
 		vadd(argv, nil);
+		// call execvp to exec the cmd
 		execvp(argv->p[0], argv->p);
+		// only reach here if execvp failed
 		fprintf(stderr, "%s\n", bstr(&cmd));
 		fprintf(stderr, "exec %s: %s\n", argv->p[0], strerror(errno));
+		// here use _exit, no cleanup
 		_exit(1);
 	}
+	// parent process
 	if(b != nil) {
 		close(p[1]);
+		// read output from the pipe
 		breadfrom(b, p[0]);
 		close(p[0]);
 	}
 
+	// save the cmd as bg job
 	if(nbg < 0)
 		fatal("bad bookkeeping");
 	bg[nbg].pid = pid;
@@ -242,12 +261,14 @@ bgwait1(void)
 		if(errno != EINTR)
 			fatal("waitpid: %s", strerror(errno));
 	}
+	// find the finish bg job
 	for(i=0; i<nbg; i++)
 		if(bg[i].pid == pid)
 			goto ok;
 	fatal("waitpid: unexpected pid");
 
 ok:
+	// clean the bg job
 	cmd = bg[i].cmd;
 	mode = bg[i].mode;
 	bg[i].pid = 0;
@@ -582,6 +603,7 @@ lastelem(char *p)
 }
 
 // xmemmove copies n bytes from src to dst.
+// this can deal with when dst and src are not seperated
 void
 xmemmove(void *dst, void *src, int n)
 {
@@ -635,6 +657,7 @@ xsetenv(char *name, char *value)
 }
 
 // main takes care of OS-specific startup and dispatches to xmain.
+// this the real main function
 int
 main(int argc, char **argv)
 {
@@ -651,6 +674,7 @@ main(int argc, char **argv)
 #if defined(__APPLE__)
 	gohostos = "darwin";
 	// Even on 64-bit platform, darwin uname -m prints i386.
+	// that is strange, but we can use sysctl to get the real arch
 	run(&b, nil, 0, "sysctl", "machdep.cpu.extfeatures", nil);
 	if(contains(bstr(&b), "EM64T"))
 		gohostarch = "amd64";
@@ -678,7 +702,7 @@ main(int argc, char **argv)
 		else
 			fatal("unknown architecture: %s", u.machine);
 	}
-
+	// so here why the bgnum is set to 1 as for arm?
 	if(strcmp(gohostarch, "arm") == 0)
 		maxnbg = 1;
 
